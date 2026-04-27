@@ -1,0 +1,16 @@
+﻿grafana:
+  enabled: true
+  adminPassword: admin123
+  
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      url: http://loki:3100
+      access: proxy
+
+prometheus:
+  prometheusSpec:
+    retention: 15d
+
+defaultRules:
+  create: true

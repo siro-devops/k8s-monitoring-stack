@@ -1,0 +1,138 @@
+﻿apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo-app
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-app
+  namespace: demo-app
+  labels:
+    app: demo-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: demo-app
+  template:
+    metadata:
+      labels:
+        app: demo-app
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: app
+        image: python:3.9-slim
+        command:
+          - /bin/sh
+          - -c
+          - |
+            # Create the app directory
+            mkdir -p /app
+            
+            # Create the Python app
+            cat > /app/app.py << 'EOF'
+            from flask import Flask, jsonify
+            from prometheus_flask_exporter import PrometheusMetrics
+            import random
+            import time
+            import logging
+            import os
+            
+            app = Flask(__name__)
+            metrics = PrometheusMetrics(app)
+            
+            logging.basicConfig(level=logging.INFO)
+            logger = logging.getLogger(__name__)
+            
+            metrics.info('app_info', 'Application info', version='1.0.0')
+            
+            @app.route('/')
+            def hello():
+                logger.info("Home page accessed")
+                return jsonify({"message": "Hello from monitored app!", "status": "ok"}), 200
+            
+            @app.route('/api/data')
+            @metrics.counter('api_requests_total', 'Total API requests')
+            @metrics.histogram('api_request_duration_seconds', 'API request duration')
+            def get_data():
+                time.sleep(random.uniform(0.1, 0.5))
+                if random.random() < 0.1:
+                    logger.error("Random error occurred in API call")
+                    return jsonify({"error": "Internal server error"}), 500
+                logger.info("API data fetched successfully")
+                return jsonify({"data": [1, 2, 3, 4, 5], "timestamp": time.time()}), 200
+            
+            @app.route('/metrics')
+            def metrics_endpoint():
+                return metrics.get_metrics()
+            
+            @app.route('/health')
+            def health():
+                return jsonify({"status": "healthy"}), 200
+            
+            if __name__ == '__main__':
+                port = int(os.getenv('PORT', 8000))
+                app.run(host='0.0.0.0', port=port)
+            EOF
+            
+            # Install dependencies and run the app
+            pip install flask prometheus-flask-exporter
+            python /app/app.py
+        ports:
+        - containerPort: 8000
+          name: http
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-app
+  namespace: demo-app
+spec:
+  selector:
+    app: demo-app
+  ports:
+    - port: 8000
+      targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: load-generator
+  namespace: demo-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: load-generator
+  template:
+    metadata:
+      labels:
+        app: load-generator
+    spec:
+      containers:
+      - name: loader
+        image: curlimages/curl:7.88.1
+        command:
+          - /bin/sh
+          - -c
+          - |
+            while true; do
+              curl -s http://demo-app:8000/
+              curl -s http://demo-app:8000/api/data
+              curl -s http://demo-app:8000/api/data
+              curl -s http://demo-app:8000/api/data
+              sleep 2
+            done
