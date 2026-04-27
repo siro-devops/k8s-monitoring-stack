@@ -5,15 +5,30 @@
 [![Grafana](https://img.shields.io/badge/grafana-%23F46800.svg?style=for-the-badge&logo=grafana&logoColor=white)](https://grafana.com/)
 [![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
 
-## 📋 Project Overview
+## Project Overview
 
 A complete, production-grade observability stack for Kubernetes using **Prometheus** for metrics, **Grafana** for visualization, and **Loki** for log aggregation. Includes a sample Flask application instrumented with Prometheus metrics and an automatic load generator.
 
-## 🏗️ Architecture
+## Architecture
+┌─────────────────────────────────────────────────────────────┐
+│ Kubernetes Cluster │
+├─────────────────────────────────────────────────────────────┤
+│ │
+│ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ │
+│ │ Prometheus │◄───│ Grafana │───►│ Loki │ │
+│ │ (Metrics) │ │ (Dashboard) │ │ (Logs) │ │
+│ └──────┬───────┘ └──────────────┘ └──────┬───────┘ │
+│ │ │ │
+│ ▼ ▼ │
+│ ┌──────────────────────────────────────────────────────┐ │
+│ │ Sample Flask Application │ │
+│ │ (Prometheus Metrics + Structured Logs) │ │
+│ └──────────────────────────────────────────────────────┘ │
+│ │
+└─────────────────────────────────────────────────────────────┘
 
 
-
-## 📊 Components
+## Components
 
 | Component | Purpose | Port |
 |-----------|---------|------|
@@ -23,7 +38,7 @@ A complete, production-grade observability stack for Kubernetes using **Promethe
 | **Alertmanager** | Alert routing | 9093 |
 | **Sample App** | Flask app with Prometheus metrics | 8000 |
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
